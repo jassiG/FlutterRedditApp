@@ -3,16 +3,39 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-void main() {
-  runApp(RedditApp());
-}
-
 // global variables
+var appTitle = 'Random Reddit Memes';
 var imageUrl =
     "https://www.materialui.co/materialIcons/navigation/refresh_white_192x192.png";
-var imageTitle = "Tap the Reload Icon for a Random Meme";
+var imageTitle =
+    "Tap the Floating Reload button for a Random Meme\n\nTap the top right reload button to refresh Dataset\n\nThere is also a r/all mode toggle in the drawer";
 var imageAuthur = "me";
+var subreddit = "none";
 var _isLoading = false;
+bool allMode = false;
+
+var urls = {
+  0: "https://www.reddit.com/r/memes/hot.json?limit=56",
+  1: "https://www.reddit.com/r/dankmemes/hot.json?limit=56",
+  2: "https://www.reddit.com/r/all.json?limit=100",
+  '0lim': 56,
+  '1lim': 56,
+  '2lim': 100,
+};
+var responses = new List(3);
+
+_refreshData() async {
+  print("App is Resetting Data....");
+  responses[0] = await http.get(urls[0]);
+  responses[1] = await http.get(urls[1]);
+  responses[2] = await http.get(urls[2]);
+  print("Data Reset Complete!");
+}
+
+void main() {
+  _refreshData();
+  runApp(RedditApp());
+}
 
 class RedditApp extends StatefulWidget {
   @override
@@ -23,40 +46,52 @@ class RedditApp extends StatefulWidget {
 }
 
 class RedditState extends State<RedditApp> {
-  var urls = {
-    0: "https://www.reddit.com/r/memes/hot.json?limit=56",
-    1: "https://www.reddit.com/r/dankmemes/hot.json?limit=56"
-  };
   _fetchData() async {
     Random rndm = new Random();
-    print("Attempting to fetch the data from the network...");
-    int subreddit = rndm.nextInt(2);
-    var response = await http.get(urls[subreddit]);
-    var map = json.decode(response.body);
-    int memeNumber = rndm.nextInt(26);
+    print("refreshing post");
+    int subredditNumber = 0;
+    if (!allMode) {
+      appTitle = 'Random Reddit Memes';
+      subredditNumber = rndm.nextInt(2);
+    } else {
+      appTitle = 'Random Reddit Posts';
+      subredditNumber = 2;
+    }
+    var map = json.decode(responses[subredditNumber].body);
+    int postNumber = rndm.nextInt(urls[subredditNumber.toString() + 'lim']);
 
-    if (map['data']['children'][memeNumber]['data']['domain'] != 'i.redd.it') {
-      subreddit = rndm.nextInt(2);
-      memeNumber = rndm.nextInt(56);
-      response = await http.get(urls[subreddit]);
-      map = json.decode(response.body);
-    } else if (map['data']['children'][memeNumber]['data']['domain'] ==
+    if (map['data']['children'][postNumber]['data']['domain'] != 'i.redd.it') {
+      if (!allMode) {
+        subredditNumber = rndm.nextInt(2);
+      } else {
+        subredditNumber = 2;
+      }
+      map = json.decode(responses[subredditNumber].body);
+      postNumber = rndm.nextInt(urls[subredditNumber.toString() + 'lim']);
+    } else if (map['data']['children'][postNumber]['data']['domain'] ==
         'i.redd.it') {
-      imageUrl = map['data']['children'][memeNumber]['data']['url'];
-      imageTitle = map['data']['children'][memeNumber]['data']['title'];
+      imageUrl = map['data']['children'][postNumber]['data']['url'];
+      imageTitle = map['data']['children'][postNumber]['data']['title'];
+      subreddit = map['data']['children'][postNumber]['data']
+          ['subreddit_name_prefixed'];
       imageAuthur =
-          map['data']['children'][memeNumber]['data']['author_fullname'];
+          map['data']['children'][postNumber]['data']['author_fullname'];
     } else {
       imageUrl =
           "https://www.elegantthemes.com/blog/wp-content/uploads/2020/07/000-HTTP-Error-400.png";
-      imageTitle = map['data']['children'][memeNumber]['data']['title'];
-      imageAuthur =
-          map['data']['children'][memeNumber]['data']['author_fullname'];
+      imageTitle = map['data']['children'][postNumber]['data']['title'];
+      imageAuthur = 'oops';
+      subreddit = 'oops';
     }
     //print("Done");
     setState(() {
       _isLoading = false;
     });
+  }
+
+  void _changeAllMode(bool anything) {
+    allMode = allMode ^ true;
+    _fetchData();
   }
 
   @override
@@ -65,23 +100,58 @@ class RedditState extends State<RedditApp> {
       home: new Scaffold(
         backgroundColor: Color.fromARGB(255, 20, 20, 20),
         appBar: new AppBar(
-          title: new Text("Random Reddit Memes"),
+          title: new Text(appTitle),
           actions: <Widget>[
             new IconButton(
               icon: new Icon(Icons.refresh),
               onPressed: () {
-                print("Reloading...");
-                _fetchData();
-                //sleep(const Duration(seconds: 4));
-                setState(() {
-                  _isLoading = true;
-                });
-                //print(firstUrl);
+                _refreshData();
               },
             ),
           ],
         ),
-        body: Column(
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              DrawerHeader(child: Text("Temp Drawer"),
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent,
+                ),
+              ),
+              ListTile(
+                title: Text("option 1"),
+                onTap: (){
+                  //
+                },
+              ),
+              ListTile(
+                title: Text("option 2"),
+                onTap: (){
+                  //
+                },
+              ),
+              Row(
+                children: <Widget>[
+                  Checkbox(value: allMode, onChanged: _changeAllMode),
+                  Text("r/all"),
+                ],
+              )
+            ],
+          ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          child: Icon(Icons.refresh_outlined),
+          onPressed: () {
+            //sleep(const Duration(seconds: 4));
+            setState(() {
+              _isLoading = true;
+            });
+            _fetchData();
+            //print(firstUrl);
+          },
+        ),
+        body: ListView(
           children: <Widget>[
             Container(
               margin: const EdgeInsets.only(top: 10.0),
@@ -99,7 +169,14 @@ class RedditState extends State<RedditApp> {
                         ),
                       ),
                       TextSpan(
-                        text: "By u/" + imageAuthur,
+                        text: "By: u/" + imageAuthur + '\n',
+                        style: TextStyle(
+                          fontSize: 8,
+                          color: Color.fromARGB(255, 240, 240, 240),
+                        ),
+                      ),
+                      TextSpan(
+                        text: "Posted in: " + subreddit + '\n',
                         style: TextStyle(
                           fontSize: 8,
                           color: Color.fromARGB(255, 240, 240, 240),
