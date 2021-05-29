@@ -1,5 +1,5 @@
 # FlutterRedditApp
-__My first cross platform application using Flutter.__
+__A cross platform Reddit application made with Flutter.__
 ___
 This App takes Reddit memes from r/dankmemes/hot and r/memes/hot and shows them in a random order on press of a button.
 
